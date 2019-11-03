@@ -6,17 +6,33 @@
 
 namespace
 {
-size_t cb(
-    const char *in,
-    size_t size,
-    size_t num,
-    std::string *out)
-{
-    const size_t totalBytes(size * num);
-    out->append(in, totalBytes);
-    return totalBytes;
-};
+    size_t cb(
+            const char *in,
+            size_t size,
+            size_t num,
+            std::string *out)
+    {
+        const size_t totalBytes(size * num);
+        out->append(in, totalBytes);
+        return totalBytes;
+    };
 } // namespace
+
+struct progress
+{
+    CURL *curl;
+};
+
+#define ONE_KILOBYTE CURL_OFF_T_C(1024)
+#define ONE_MEGABYTE (CURL_OFF_T_C(1024) * 1024)
+
+static int xferinfo(void *p,
+        curl_off_t dltotal, curl_off_t dlnow,
+        curl_off_t ultotal, curl_off_t ulnow)
+{
+    fprintf(stderr, "UP: %" CURL_FORMAT_CURL_OFF_T " of %" CURL_FORMAT_CURL_OFF_T " MB\r", ulnow/ONE_MEGABYTE, ultotal/ONE_MEGABYTE);
+    return 0;
+}
 
 void showUsage(std::string name)
 {
@@ -24,7 +40,7 @@ void showUsage(std::string name)
               << "Usage : " << name << " <option(s)>\n"
               << "Options:\n"
               << "\t-h, --help\t Display this message.\n"
-              << "\t-d, --deletion\t Generate a deletion key.";
+              << "\t-d, --deletion\t Generate a deletion key.\n";
 }
 
 void fileUpload(std::string genDeletionKey, std::string filename)
@@ -57,12 +73,17 @@ void fileUpload(std::string genDeletionKey, std::string filename)
     {
         int httpCode = 0;
 
+        struct progress prog;
+
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.teknik.io/v1/Upload");
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
 
         std::string *httpData(new std::string());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, httpData);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, false);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfo);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog);
         res = curl_easy_perform(curl);
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
