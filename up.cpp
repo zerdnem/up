@@ -89,6 +89,12 @@ void fileUpload(std::string genDeletionKey, std::string filename)
     }
 }
 
+bool check_file_exists(const char *filename)
+{
+    std::ifstream infile(filename);
+    return infile.good();
+}
+
 int main(int argc, char *argv[])
 {
     std::string genDeletionKey = "false";
@@ -107,8 +113,14 @@ int main(int argc, char *argv[])
     {
         if (argv[2])
         {
-            genDeletionKey = "true";
-            fileUpload(genDeletionKey, argv[2]);
+            std::string filename = argv[2];
+            if (check_file_exists(filename.c_str()))
+            {
+                genDeletionKey = "true";
+                fileUpload(genDeletionKey, argv[2]);
+            } else {
+                std::cout << "File doesn't exists!\n";
+            }
         }
         else
         {
@@ -118,7 +130,12 @@ int main(int argc, char *argv[])
     }
     else
     {
-        fileUpload(genDeletionKey, arg);
+        if (check_file_exists(arg.c_str()))
+        {
+            fileUpload(genDeletionKey, arg);
+        } else {
+            std::cout << "File doesn't exists!\n";
+        }
     }
     return 0;
 }
